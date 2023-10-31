@@ -362,36 +362,29 @@ df_KNN = df_KNN.assign(**new_cols)
 df_KNN.info()
 
 
+#Filtering for only customers who have not churned
+not_yet_churned = df_KNN[df_KNN['Churn'] == 0]
+plt.hist(not_yet_churned['churn_probs'])
+
+
+
+#Filtering for churn_risks above 0.1
+high_churn_risks = not_yet_churned.copy(deep = True)
+high_churn_risks = high_churn_risks[high_churn_risks['churn_probs'] > 0.1]
+high_churn_risks.info()
+
+
 
 #Creating histplots with locational variables against average churn per category
-plt.figure(figsize = (60,10))
-data = sns.barplot(data = df_KNN, x = 'Timezone',y = 'churn_probs', ci = None)
-data.bar_label(data.containers[0])
-plt.show(data)
-
-plt.figure(figsize = (650,10))
-data2 = sns.barplot(data = df_KNN, x = 'City',y = 'churn_probs', ci = None)
-data2.bar_label(data2.containers[0])
+high_churn_risks.groupby('Timezone')['churn_probs'].max().nlargest(10).plot.bar()
+plt.savefig('Timezone_Churn.png')
 plt.show()
 
-plt.figure(figsize = (100,10))
-data3 = sns.barplot(data = df_KNN, x = 'State',y = 'churn_probs', ci = None)
-data3.bar_label(data3.containers[0])
+high_churn_risks.groupby('State')['churn_probs'].max().nlargest(10).plot.bar()
+plt.savefig('State_Churn.png')
 plt.show()
 
-plt.figure(figsize = (650,10))
-data4 = sns.barplot(data = df_KNN, x = 'County',y = 'churn_probs', ci = None)
-data4.bar_label(data4.containers[0])
-plt.show()
+...
 
-plt.figure(figsize = (650,10))
-data5 = sns.barplot(data = df_KNN, x = 'Job',y = 'churn_probs', ci = None)
-data5.bar_label(data5.containers[0])
-plt.show()
-
-plt.figure(figsize = (650,10))
-data6 = sns.barplot(data = df_KNN, x = 'Zip',y = 'churn_probs', ci = None)
-data6.bar_label(data6.containers[0])
-plt.show()
-
-plt.hist(df_KNN['churn_probs'])
+#The data shows that the customers in the midwest have the highest chance of churn and business analytics,
+perhaps on the survey data, could be easily done to inform a recommendation
