@@ -1,4 +1,4 @@
-Research Question: : Where are the highest churn risks located?
+#Research Question: : Where are the highest churn risks located?
 
 #All the packages I imported for this project:
 import pandas as pd
@@ -92,7 +92,7 @@ msno.dendrogram(df)
 #There are none, so I can continue with imputation
 
 
-#KNN and MICE changed the distribution of age from uniform to normal, so I used random sampling
+#KNN and MICE changed the distribution of age from uniform to normal, so I used random sampling instead
 count = 0
 for value in df['Age'].isna():
     if value == True:
@@ -125,7 +125,7 @@ df_copy_no_impute = df.copy(deep = True)
 x = df_copy_no_impute.drop(["Unnamed: 0","CaseOrder","Customer_id","Interaction","City","State","County","Timezone","Job","Lat","Lng","Zip"], axis = 'columns').dropna()
 y = x["Churn"]
 x.drop("Churn", axis = 'columns')
-x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = .25, random_state = 0)
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = 0.25, random_state = 0)
 lr.fit(x_train,y_train)
 predictions = lr.predict(x_test)
 accuracy1 = accuracy_score(y_test,predictions)
@@ -135,7 +135,7 @@ lr2 = LogisticRegression()
 x2 = df_MICE
 y2 = x2["Churn"]
 x2.drop("Churn", axis = 'columns')
-x_train2,x_test2,y_train2,y_test2 = train_test_split(x2,y2,test_size = .25, random_state = 0)
+x_train2,x_test2,y_train2,y_test2 = train_test_split(x2,y2,test_size = 0.25, random_state = 0)
 lr2.fit(x_train2,y_train2)
 predictions2 = lr2.predict(x_test2)
 accuracy2 = accuracy_score(y_test2,predictions2)
@@ -166,7 +166,7 @@ for col in df_KNN:
 
 
 
-#Create function to find potential predictors of the important columns with a large number of nulls
+#Creating function to find potential predictors of the important columns with a large number of nulls
 #If there is a very high correlation between two variables, with at least one having many nulls, it may then be better to drop the high-null variable for later regressions
 def check_highest_correlation(column_1):
     max_corr = -1
@@ -187,7 +187,7 @@ for col in df_KNN:
 
 
 
-#Create function to find potential predictors of the important columns with a large number of nulls
+#Creating function to find potential predictors of the important columns with a large number of nulls
 #Same as above but with lowest correlations. If it were a larger dataset, it would be better to combine them.
 def check_lowest_correlation(column_1):
     max_corr = 1
@@ -215,7 +215,7 @@ def outlier_classifier(model,data):
     inliers = data[labels == 0]
     return(inliers)
 
-#Measure error of hyperparameters of said model using regression given inliers
+#Measuring error of hyperparameters of said model using regression given inliers
 def regressor(inliers):
     x = inliers.drop("Churn",axis = 1)
     y = inliers["Churn"]
@@ -226,7 +226,7 @@ def regressor(inliers):
     rmse = mean_squared_error(y_test,predictions,squared = False)
     return round(rmse,3)
     
-#Find hyperparameters with the lowest error given hyperparameters
+#Finding hyperparameters with the lowest error given hyperparameters
 def hyper_parameter_tester(c,n,s,f):
     scores = {}
     x = product(c,n,s,f)
@@ -242,10 +242,10 @@ def hyper_parameter_tester(c,n,s,f):
     return(small_key)
 
 #Lists of sample hyperparameters (Could use range but would take forever and lower ability to determine best one with the following count-based method)
-contaminations = [.01,.03,.05]
+contaminations = [0.01,0.03,0.05]
 n_estimators = [250,500,750]
-max_samples = [.5]
-max_features = [.5]
+max_samples = [0.3,0.5,0.7]
+max_features = [0.3,0.5,0.7]
 
 #Running the test 50 times and appending results to a list
 results = []
@@ -266,7 +266,7 @@ print(dictionary)
 
 
 
-#Code to see which have the highest count
+#Code to see which hyperparameter combinations showed up the most
 for key,value in dictionary.items():
         if value >= 7:
             highest_count = value
@@ -275,14 +275,14 @@ for key,value in dictionary.items():
 
 
 
-#Out of the four with the highest count, which one has the lowest RMSE?
+#Out of the hyperparameters that showed up the most, which one has the lowest RMSE?
 x = outlier_classifier(IForest(contamination = 0.05, n_estimators = 250, max_samples = 0.5, max_features = 0.5),df_KNN)
 y = regressor(x)
 print(y)
 
 
 
-#Checking confidence of outliers predicted by IForest using the hyperparameters with the lowest RMSE
+#Checking confidence of outliers predicted by IForest using the hyperparameters that were selected in the previous code
 IF = IForest(contamination = 0.03, n_estimators = 750, max_samples = 0.5, max_features = 0.5)
 labels = IF.fit_predict(df_KNN)
 outliers = df_KNN[IF.labels_ == 1]
@@ -293,7 +293,7 @@ for prob in outlier_probs:
 
 
 
-#Drop the rows with the outliers as marked by IForest
+#Dropping the rows with the outliers as marked by IForest
 outlier_rows = []
 counter = 0
 while counter != len(labels):
@@ -304,11 +304,6 @@ print(len(outlier_rows))
 
 df_KNN = df_KNN.drop(outlier_rows)
 df_KNN.info()
-
-
-
-pd.set_option('display.max_columns', None)
-df_KNN.to_csv(r"C:\Users\alana\OneDrive\Desktop\D206 Assessment\D206_cleaned_data.csv")
 
 
 
