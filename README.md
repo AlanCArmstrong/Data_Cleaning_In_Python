@@ -9,4 +9,5 @@ churn rates in each locational variables (state, county, city, etc.) The main fi
 
 
 
-I concluded that the highest risks of churn are located in the midwest.
+I concluded that the customers in the midwest have the highest chance of churn. Future business analytics,
+perhaps on the survey data, could be easily done to inform a recommendation to start reducing churn rates.
