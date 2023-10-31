@@ -1,147 +1,214 @@
-Figures (*No External Sources were used in this Paper):
+Research Question: : Where are the highest churn risks located?
 
-Figure 1:
+#All the packages I imported for this project:
 import pandas as pd
+pd.set_option('display.max_columns', None)
+import missingno as msno
 import numpy as np
-import matplotlib.pyplot as plt
+from fancyimpute import IterativeImputer
+from fancyimpute import KNN
+from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
-from pyod.models.iforest import IForest
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from itertools import product
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 import warnings
+from itertools import product
+from pyod.models.iforest import IForest
 from sklearn.decomposition import PCA
 import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import folium
+from folium.plugins import HeatMap
+warnings.filterwarnings('ignore')
 
 
 
-
-
-Figure 2:
-#Loading file and dropping irrelevant columns
+#Loading file
 df = pd.read_csv(r"C:\Users\alana\OneDrive\Desktop\D206 Assessment\churn_raw_data.csv")
-df = df.drop(["CaseOrder","Customer_id","Interaction","Area","City",
-              "State","County","Zip","Lat","Lng",
-              "Timezone","Job","PaymentMethod","Marital"], axis = 'columns')
 
 
 
-
-
-Figure 3:
-#Checking columns with large number of nulls
-print(df.isna().sum())
-print(df['col_name'].unique())
-
-#Dropping unimportant columns with large number of nulls
-df = df.drop(["Children","Age","Techie"], axis = 'columns')
+#Checking for Duplicates
+print(df.duplicated().value_counts())
+df.drop_duplicates()
 
 
 
+#Checking for invalid data
+#Found that there were negative numbers where there shouldn't have been
+print(df.unique())
+print(df.describe())
+counter = 0
+for value in df['Outage_sec_perweek']:
+    if value < 0:
+        counter += 1
+print(counter)
+df[df.Outage_sec_perweek < 0] = 0
+df.info()
+
+#Typically, you wouldn't want to replace invalids with zeroes but they were all very close to zero relative to the rest of the data and there were only seven invalid responses out of 10,000.
 
 
-Figure 4:
-#Replace Categoricals with Numerics using random but proportional sampling (RBPS)
+
+#Replacing Categorical Variables with Dummies
 dict = {
-        'Phone':{'Yes':1,'No':0, np.NAN: df['Phone'].sample()},
+        "Techie":{'Yes':1,'No':0},
+        'Phone':{'Yes':1,'No':0},
         'Port_modem':{'Yes':1,'No':0},
         'Tablet':{'Yes':1,'No':0},
         'Multiple':{'Yes':1,'No':0},
         'OnlineSecurity':{'Yes':1,'No':0},
         'OnlineBackup':{'Yes':1,'No':0},
         'DeviceProtection':{'Yes':1,'No':0},
-        'TechSupport':{'Yes':1,'No':0,np.NAN: df['TechSupport'].sample()},
+        'TechSupport':{'Yes':1,'No':0},
         'StreamingTV':{'Yes':1,'No':0},
         'StreamingMovies':{'Yes':1,'No':0},
         'PaperlessBilling':{'Yes':1,'No':0},
-        'Gender':{'Male':1,'Female':0,'Prefer not to answer': df['Gender'].sample()},
-        'InternetService':{'Fiber Optic':1,'DSL':0,np.NAN:df['InternetService'].sample()},
-        'Contract':{'One year':2,'Month-to-month':1,'Two Year':3},
-        'Employment':{'Part Time':2, 'Retired':4, 'Student':1, 'Full Time':0, 'Unemployed':3},
-        'Education':{"Master's Degree":5, 'Regular High School Diploma':3, 'Doctorate Degree':6, 'No Schooling Completed':0, "Associate's Degree":4, "Bachelor's Degree":5, 'Some College, Less than 1 Year':3, 'GED or Alternative Credential':3, 'Some College, 1 or More Years, No Degree':4,'9th Grade to 12th Grade, No Diploma':2, 'Nursery School to 8th Grade':1, 'Professional School Degree':4},
+        'Gender':{'Male':1,'Female':0,'Prefer not to answer': np.NAN},
+        'InternetService':{'Fiber Optic':1,'DSL':0},
         'Churn':{'Yes':1,'No':0}
         }
 df.replace(dict,inplace = True)
-df.replace(dict,inplace = True)
 
 
 
+#One-Hot Encoding Area, Marital, PaymentMethod, Contract, Employment, and Education (Categorical Variables with Multiple Categories)
+df = pd.get_dummies(df, columns = ['Area','Marital','PaymentMethod','Contract','Employment','Education'], drop_first = True, dtype = 'int')
 
 
-Figure 5:
-#Create function to find appropriate predictors of the important columns with a large number of nulls
+
+#Checking for nulls
+print(df.isna().sum())
+print(msno.matrix(df, labels = True))
+
+
+
+#Checking for patterns between nulls
+msno.heatmap(df)
+msno.dendrogram(df)
+#There are none, so I can continue with imputation
+
+
+#KNN and MICE changed the distribution of age from uniform to normal, so I used random sampling
+count = 0
+for value in df['Age'].isna():
+    if value == True:
+        df['Age'][count] = df['Age'].dropna().sample()
+    count += 1
+df.info()
+
+
+
+#Count NaN values across all rows:
+df.isnull().sum(axis = 1).sort_values()
+#The highest count of nulls in a row is 7, no need for deletion
+
+
+
+#Comparing MICE, KNN, and no imputation error (RMSE) at predicting nulls using a copy of the dataset and LinearRegression to compare RMSEs
+#(Had to drop the keys and locational variables temporarily)
+df_MICE = df.copy(deep = True)
+df_MICE = df_MICE.drop(["Unnamed: 0","CaseOrder","Customer_id","Interaction","City","State","County","Timezone","Job","Lat","Lng","Zip"], axis = 'columns')
+MICE_imputer = IterativeImputer()
+df_MICE.iloc[:,:] = MICE_imputer.fit_transform(df_MICE)
+
+df_KNN = df.copy(deep = True)
+df_KNN = df_KNN.drop(["Unnamed: 0","CaseOrder","Customer_id","Interaction","City","State","County","Timezone","Job","Lat","Lng","Zip"], axis = 'columns')
+KNN_imputer = KNN(verbose = 0)
+df_KNN.iloc[:,:] = KNN_imputer.fit_transform(df_KNN)
+
+lr = LogisticRegression()
+df_copy_no_impute = df.copy(deep = True)
+x = df_copy_no_impute.drop(["Unnamed: 0","CaseOrder","Customer_id","Interaction","City","State","County","Timezone","Job","Lat","Lng","Zip"], axis = 'columns').dropna()
+y = x["Churn"]
+x.drop("Churn", axis = 'columns')
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = .25, random_state = 0)
+lr.fit(x_train,y_train)
+predictions = lr.predict(x_test)
+accuracy1 = accuracy_score(y_test,predictions)
+print(f"no_impute accuracy_score is = {accuracy1}")
+
+lr2 = LogisticRegression()
+x2 = df_MICE
+y2 = x2["Churn"]
+x2.drop("Churn", axis = 'columns')
+x_train2,x_test2,y_train2,y_test2 = train_test_split(x2,y2,test_size = .25, random_state = 0)
+lr2.fit(x_train2,y_train2)
+predictions2 = lr2.predict(x_test2)
+accuracy2 = accuracy_score(y_test2,predictions2)
+print(f"MICE accuracy_score is = {accuracy2}")
+
+lr3 = LogisticRegression()
+x3 = df_KNN
+y3 = x3["Churn"]
+x3.drop("Churn", axis = 'columns')
+x_train3,x_test3,y_train3,y_test3 = train_test_split(x3,y3,test_size = .25, random_state = 0)
+lr3.fit(x_train3,y_train3)
+predictions3 = lr3.predict(x_test3)
+accuracy3 = accuracy_score(y_test3,predictions3)
+print(f"KNN accuracy_score is = {accuracy3}")
+
+
+#Checking before and after imputation to confirm distributions were not changed
+for col in df_KNN:
+    plt.hist(df[col])
+    plt.xlabel(col)
+    plt.show()
+    plt.hist(df_MICE[col])
+    plt.xlabel(col)
+    plt.show()
+    plt.hist(df_KNN[col])
+    plt.xlabel(col)
+    plt.show()
+
+
+
+#Create function to find potential predictors of the important columns with a large number of nulls
+#If there is a very high correlation between two variables, with at least one having many nulls, it may then be better to drop the high-null variable for later regressions
 def check_highest_correlation(column_1):
     max_corr = -1
-    for col in df:
-        df_check = df[[f'{column_1}', f'{col}']]
-        df_check_top_corr = df_check.dropna()
+    for col in df_KNN:
+        df_KNN_check = df_KNN[[f'{column_1}', f'{col}']]
+        df_KNN_check_top_corr = df_KNN_check.dropna()
         if column_1 == col:
             continue
-        corr = (df_check_top_corr[f'{column_1}'].corr(df_check_top_corr[f'{col}']))
+        corr = (df_KNN_check_top_corr[f'{column_1}'].corr(df_KNN_check_top_corr[f'{col}']))
         if corr > max_corr: 
             max_corr = corr
             col_name = col
     return(col_name , max_corr)
 
+for col in df_KNN:
+    print(col)
+    print(check_highest_correlation(f'{col}'))
 
 
 
+#Create function to find potential predictors of the important columns with a large number of nulls
+#Same as above but with lowest correlations. If it were a larger dataset, it would be better to combine them.
+def check_lowest_correlation(column_1):
+    max_corr = 1
+    for col in df_KNN:
+        df_KNN_check = df_KNN[[f'{column_1}', f'{col}']]
+        df_KNN_check_top_corr = df_KNN_check.dropna()
+        if column_1 == col:
+            continue
+        corr = (df_KNN_check_top_corr[f'{column_1}'].corr(df_KNN_check_top_corr[f'{col}']))
+        if corr < max_corr: 
+            max_corr = corr
+            col_name = col
+    return(col_name , max_corr)
 
-Figure 6:
-#Finding Best Fit Line to Replace Nulls with predicted values
-df_check = df[['Bandwidth_GB_Year', 'Tenure']]
-df_check_top_corr = df_check.dropna()
-plot = plt.scatter(df_check_top_corr['Bandwidth_GB_Year'],df_check_top_corr['Tenure'])
-plt.xlabel('Bandwidth_GB_Year')
-plt.ylabel('Tenure')
-m,b = np.polyfit(df_check_top_corr['Bandwidth_GB_Year'],df_check_top_corr['Tenure'],1)
-print(f'{m},{b}')
-
-
-
-
-
-Figure 7:
-#Replacing Most Nulls (Except where they were both Null) with predicted Values
-dict2 = {'Tenure':{np.NaN: 0.012*df['Bandwidth_GB_Year']-6.17},'Bandwidth_GB_Year':{np.NaN:(df['Tenure'] + 6.17)/(0.012)}}
-df.replace(dict2,inplace = True)
-
-#Replacing the double Nulls with median values (Only 91 values, 182 total)
-dict3 = {'Tenure':{np.NaN: df['Tenure'].median()},'Bandwidth_GB_Year':{np.NaN:df['Bandwidth_GB_Year'].median()}}
-df.replace(dict3,inplace = True)
+for col in df_KNN:
+    print(col)
+    print(check_lowest_correlation(f'{col}'))
 
 
 
-
-
-Figure 8:
-#Training a linear regression for income
-#I had to remove all the categorical data with more than two categories because they might misrepresent the relationship and provided low coefficients anyway
-x_train_0 = df.dropna()
-x_train = x_train_0.drop(['Income', 'Unnamed: 0','Employment','Contract','Education','item2','item3','item4','item5','item6','item7','item8','item1'], axis = 1)
-x_train.info()
-y_train = df['Income'].dropna()
-lr = LinearRegression()
-lr.fit(x_train,y_train)
-
-#Predicting Income using Nulls as the test data (about .25 of the data)
-null_mask = df.isnull().any(axis=1)
-x_test_0 = df[null_mask]
-x_test_1 = x_test_0.drop(['Unnamed: 0','Employment','Contract','Education','item2','item3','item4','item5','item6','item7','item8','item1'],axis = 1)
-x_test = x_test_1.drop('Income',axis = 1)
-Pred = lr.predict(x_test)
-
-#Replacing Nulls in Income with Predicted Data
-dict4 = {'Income':{np.NaN:Pred}}
-df.replace(dict4, inplace = True)
-
-
-
-
-
-Figure 9:
-warnings.filterwarnings('ignore')
-
+#Identifying and removing Outliers using Isolation Forest and testing with Logistic Regression
 #Create function to predict inliers using specified model (IForest)
 def outlier_classifier(model,data):
     labels = model.fit_predict(data)
@@ -165,7 +232,7 @@ def hyper_parameter_tester(c,n,s,f):
     x = product(c,n,s,f)
     for c,n,s,f in x:
         IFnsf = IForest(contamination = c, n_estimators = n, max_samples = s, max_features = f, n_jobs = -1)
-        resultnsf = outlier_classifier(IF,df)
+        resultnsf = outlier_classifier(IFnsf,df_KNN)
         scores[c,n,s,f] = regressor(resultnsf)    
     smallest_rmse = 100
     for key,value in scores.items():
@@ -174,15 +241,15 @@ def hyper_parameter_tester(c,n,s,f):
             small_key = key
     return(small_key)
 
-#Lists of sample hyperparameters (Could use range but would take forever and lower ability to determine best one with count method)
-contaminations = [0.05]
-n_estimators = [500]
+#Lists of sample hyperparameters (Could use range but would take forever and lower ability to determine best one with the following count-based method)
+contaminations = [.01,.03,.05]
+n_estimators = [250,500,750]
 max_samples = [.5]
 max_features = [.5]
 
-#Running the test 100 times and appending results to a list
+#Running the test 50 times and appending results to a list
 results = []
-for int in range(100):
+for int in range(50):
     hyper_parameter_key = hyper_parameter_tester(contaminations,n_estimators,max_samples,max_features)
     results.append(hyper_parameter_key)
 
@@ -195,32 +262,30 @@ for key,value in dictionary.items():
         if value > highest_count:
             high_count = value
             best_hyperparamters = key
+print(dictionary)
 
 
 
-
-
-Figure 10:
 #Code to see which have the highest count
 for key,value in dictionary.items():
-        if value == 4:
+        if value >= 7:
             highest_count = value
             best_hyperparameters = key
             print(best_hyperparameters,highest_count)
-#Out of the 4, which one has the lowest RMSE?
-x = outlier_classifier(IForest(contamination = 0.05, n_estimators = 500, max_samples = 0.5, max_features = 0.5),df)
-y = regresser(x)
+
+
+
+#Out of the four with the highest count, which one has the lowest RMSE?
+x = outlier_classifier(IForest(contamination = 0.05, n_estimators = 250, max_samples = 0.5, max_features = 0.5),df_KNN)
+y = regressor(x)
 print(y)
 
 
 
-
-
-Figure 11:
-#Checking confidence of outliers predicted by IForest
-IF = IForest(contamination = 0.05, n_estimators = 500, max_samples = 0.5, max_features = 0.5)
-labels = IF.fit_predict(df)
-outliers = df[IF.labels_ == 1]
+#Checking confidence of outliers predicted by IForest using the hyperparameters with the lowest RMSE
+IF = IForest(contamination = 0.03, n_estimators = 750, max_samples = 0.5, max_features = 0.5)
+labels = IF.fit_predict(df_KNN)
+outliers = df_KNN[IF.labels_ == 1]
 print(labels)
 outlier_probs = IF.predict_proba(outliers)
 for prob in outlier_probs:
@@ -228,44 +293,110 @@ for prob in outlier_probs:
 
 
 
-
-
-Figure 12:
-#Drop the rows with the outliers
+#Drop the rows with the outliers as marked by IForest
 outlier_rows = []
 counter = 0
 while counter != len(labels):
     if labels[counter] == 1:
         outlier_rows.append(counter)
     counter += 1
-df = df.drop(outlier_rows)
+print(len(outlier_rows))
+
+df_KNN = df_KNN.drop(outlier_rows)
+df_KNN.info()
 
 
 
+pd.set_option('display.max_columns', None)
+df_KNN.to_csv(r"C:\Users\alana\OneDrive\Desktop\D206 Assessment\D206_cleaned_data.csv")
 
 
-Figure 13:
-#PCA and confirming whether Churn, MonthlyCharge, Bandwidth_GB_Year, and Tenure have a strong relationship
-df_num = df.drop(['Phone','Port_modem','Tablet','Multiple','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaperlessBilling','Gender','InternetService','Contract','Employment','Education','Unnamed: 0'],axis = 1)
-df_normal = (df_num - df_num.mean())/df_num.std()
-pca = PCA(n_components = 18)
-pca.fit(df_normal)
-df_pca = pd.DataFrame(pca.transform(df_normal), columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16','PC17','PC18'])
+
+#Using PCA to explore relationships in the data
+scaler = StandardScaler()
+df_num = df_KNN.copy(deep = True)
+df_num = df_num[['Population','Children','Age','Income','Outage_sec_perweek','Tenure','MonthlyCharge','Bandwidth_GB_Year','item1','item2','item3','item4','item5','item6','item7','item8']]
+df_std = pd.DataFrame(scaler.fit_transform(df_num), columns = df_num.columns)
+df_std.info()
+pca = PCA(n_components = 16)
+pca.fit(df_std)
+df_pca = pd.DataFrame(pca.transform(df_std), columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16'])
+
 plt.plot(pca.explained_variance_ratio_)
 plt.xlabel('number of comps')
 plt.ylabel('explained variance')
-loadings = pd.DataFrame(pca.components_.T, columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16','PC17','PC18'], index = df_num.columns)
+
+loadings = pd.DataFrame(pca.components_.T, columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16'], index = df_num.columns)
+print(loadings)
 
 
 
-
-
-Figure 15:
 #Using EigenValues to determine which relationships are important
-matrix = np.dot(df_normal.T,df_normal)/df.shape[0]
+matrix = np.dot(df_std.T,df_std)/df.shape[0]
 eigenvalues = [np.dot(eigenvector.T,np.dot(matrix,eigenvector)) for eigenvector in pca.components_]
 plt.plot(eigenvalues)
 plt.xlabel('number of comps')
 plt.ylabel('Eigenvalue')
 
 
+
+#Adding a column with all the churn probabilities
+LR_final = LogisticRegression()
+x = df_KNN.loc[:, df_KNN.columns != 'Churn']
+y = df_KNN['Churn']
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size = .25, random_state = 0)
+LR_final.fit(x_train,y_train)
+results = LR_final.predict(x_test)
+churn_probs = LR_final.predict_proba(x)
+df_KNN['churn_probs'] = churn_probs[:,1]
+df_KNN.info()
+
+
+
+#Readding all dropped locational variables
+new_cols = {'Timezone' : df['Timezone'],
+            'City' : df['City'], 
+            'State': df['State'], 
+            'County' : df['County'], 
+            'Job' : df['Job'],
+            'Lat' : df['Lat'],
+            'Lng' : df['Lng'],
+            'Zip' : df['Zip']
+            }
+df_KNN = df_KNN.assign(**new_cols)
+df_KNN.info()
+
+
+
+#Creating histplots with locational variables against average churn per category
+plt.figure(figsize = (60,10))
+data = sns.barplot(data = df_KNN, x = 'Timezone',y = 'churn_probs', ci = None)
+data.bar_label(data.containers[0])
+plt.show(data)
+
+plt.figure(figsize = (650,10))
+data2 = sns.barplot(data = df_KNN, x = 'City',y = 'churn_probs', ci = None)
+data2.bar_label(data2.containers[0])
+plt.show()
+
+plt.figure(figsize = (100,10))
+data3 = sns.barplot(data = df_KNN, x = 'State',y = 'churn_probs', ci = None)
+data3.bar_label(data3.containers[0])
+plt.show()
+
+plt.figure(figsize = (650,10))
+data4 = sns.barplot(data = df_KNN, x = 'County',y = 'churn_probs', ci = None)
+data4.bar_label(data4.containers[0])
+plt.show()
+
+plt.figure(figsize = (650,10))
+data5 = sns.barplot(data = df_KNN, x = 'Job',y = 'churn_probs', ci = None)
+data5.bar_label(data5.containers[0])
+plt.show()
+
+plt.figure(figsize = (650,10))
+data6 = sns.barplot(data = df_KNN, x = 'Zip',y = 'churn_probs', ci = None)
+data6.bar_label(data6.containers[0])
+plt.show()
+
+plt.hist(df_KNN['churn_probs'])
