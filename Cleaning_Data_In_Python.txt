@@ -1,0 +1,271 @@
+Figures (*No External Sources were used in this Paper):
+
+Figure 1:
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from pyod.models.iforest import IForest
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from itertools import product
+import warnings
+from sklearn.decomposition import PCA
+import seaborn as sns
+
+
+
+
+
+Figure 2:
+#Loading file and dropping irrelevant columns
+df = pd.read_csv(r"C:\Users\alana\OneDrive\Desktop\D206 Assessment\churn_raw_data.csv")
+df = df.drop(["CaseOrder","Customer_id","Interaction","Area","City",
+              "State","County","Zip","Lat","Lng",
+              "Timezone","Job","PaymentMethod","Marital"], axis = 'columns')
+
+
+
+
+
+Figure 3:
+#Checking columns with large number of nulls
+print(df.isna().sum())
+print(df['col_name'].unique())
+
+#Dropping unimportant columns with large number of nulls
+df = df.drop(["Children","Age","Techie"], axis = 'columns')
+
+
+
+
+
+Figure 4:
+#Replace Categoricals with Numerics using random but proportional sampling (RBPS)
+dict = {
+        'Phone':{'Yes':1,'No':0, np.NAN: df['Phone'].sample()},
+        'Port_modem':{'Yes':1,'No':0},
+        'Tablet':{'Yes':1,'No':0},
+        'Multiple':{'Yes':1,'No':0},
+        'OnlineSecurity':{'Yes':1,'No':0},
+        'OnlineBackup':{'Yes':1,'No':0},
+        'DeviceProtection':{'Yes':1,'No':0},
+        'TechSupport':{'Yes':1,'No':0,np.NAN: df['TechSupport'].sample()},
+        'StreamingTV':{'Yes':1,'No':0},
+        'StreamingMovies':{'Yes':1,'No':0},
+        'PaperlessBilling':{'Yes':1,'No':0},
+        'Gender':{'Male':1,'Female':0,'Prefer not to answer': df['Gender'].sample()},
+        'InternetService':{'Fiber Optic':1,'DSL':0,np.NAN:df['InternetService'].sample()},
+        'Contract':{'One year':2,'Month-to-month':1,'Two Year':3},
+        'Employment':{'Part Time':2, 'Retired':4, 'Student':1, 'Full Time':0, 'Unemployed':3},
+        'Education':{"Master's Degree":5, 'Regular High School Diploma':3, 'Doctorate Degree':6, 'No Schooling Completed':0, "Associate's Degree":4, "Bachelor's Degree":5, 'Some College, Less than 1 Year':3, 'GED or Alternative Credential':3, 'Some College, 1 or More Years, No Degree':4,'9th Grade to 12th Grade, No Diploma':2, 'Nursery School to 8th Grade':1, 'Professional School Degree':4},
+        'Churn':{'Yes':1,'No':0}
+        }
+df.replace(dict,inplace = True)
+df.replace(dict,inplace = True)
+
+
+
+
+
+Figure 5:
+#Create function to find appropriate predictors of the important columns with a large number of nulls
+def check_highest_correlation(column_1):
+    max_corr = -1
+    for col in df:
+        df_check = df[[f'{column_1}', f'{col}']]
+        df_check_top_corr = df_check.dropna()
+        if column_1 == col:
+            continue
+        corr = (df_check_top_corr[f'{column_1}'].corr(df_check_top_corr[f'{col}']))
+        if corr > max_corr: 
+            max_corr = corr
+            col_name = col
+    return(col_name , max_corr)
+
+
+
+
+
+Figure 6:
+#Finding Best Fit Line to Replace Nulls with predicted values
+df_check = df[['Bandwidth_GB_Year', 'Tenure']]
+df_check_top_corr = df_check.dropna()
+plot = plt.scatter(df_check_top_corr['Bandwidth_GB_Year'],df_check_top_corr['Tenure'])
+plt.xlabel('Bandwidth_GB_Year')
+plt.ylabel('Tenure')
+m,b = np.polyfit(df_check_top_corr['Bandwidth_GB_Year'],df_check_top_corr['Tenure'],1)
+print(f'{m},{b}')
+
+
+
+
+
+Figure 7:
+#Replacing Most Nulls (Except where they were both Null) with predicted Values
+dict2 = {'Tenure':{np.NaN: 0.012*df['Bandwidth_GB_Year']-6.17},'Bandwidth_GB_Year':{np.NaN:(df['Tenure'] + 6.17)/(0.012)}}
+df.replace(dict2,inplace = True)
+
+#Replacing the double Nulls with median values (Only 91 values, 182 total)
+dict3 = {'Tenure':{np.NaN: df['Tenure'].median()},'Bandwidth_GB_Year':{np.NaN:df['Bandwidth_GB_Year'].median()}}
+df.replace(dict3,inplace = True)
+
+
+
+
+
+Figure 8:
+#Training a linear regression for income
+#I had to remove all the categorical data with more than two categories because they might misrepresent the relationship and provided low coefficients anyway
+x_train_0 = df.dropna()
+x_train = x_train_0.drop(['Income', 'Unnamed: 0','Employment','Contract','Education','item2','item3','item4','item5','item6','item7','item8','item1'], axis = 1)
+x_train.info()
+y_train = df['Income'].dropna()
+lr = LinearRegression()
+lr.fit(x_train,y_train)
+
+#Predicting Income using Nulls as the test data (about .25 of the data)
+null_mask = df.isnull().any(axis=1)
+x_test_0 = df[null_mask]
+x_test_1 = x_test_0.drop(['Unnamed: 0','Employment','Contract','Education','item2','item3','item4','item5','item6','item7','item8','item1'],axis = 1)
+x_test = x_test_1.drop('Income',axis = 1)
+Pred = lr.predict(x_test)
+
+#Replacing Nulls in Income with Predicted Data
+dict4 = {'Income':{np.NaN:Pred}}
+df.replace(dict4, inplace = True)
+
+
+
+
+
+Figure 9:
+warnings.filterwarnings('ignore')
+
+#Create function to predict inliers using specified model (IForest)
+def outlier_classifier(model,data):
+    labels = model.fit_predict(data)
+    inliers = data[labels == 0]
+    return(inliers)
+
+#Measure error of hyperparameters of said model using regression given inliers
+def regressor(inliers):
+    x = inliers.drop("Churn",axis = 1)
+    y = inliers["Churn"]
+    x_train,x_test,y_train,y_test = train_test_split(x,y,random_state = 1)
+    lr0 = LinearRegression()
+    lr0.fit(x_train,y_train)
+    predictions = lr0.predict(x_test)
+    rmse = mean_squared_error(y_test,predictions,squared = False)
+    return round(rmse,3)
+    
+#Find hyperparameters with the lowest error given hyperparameters
+def hyper_parameter_tester(c,n,s,f):
+    scores = {}
+    x = product(c,n,s,f)
+    for c,n,s,f in x:
+        IFnsf = IForest(contamination = c, n_estimators = n, max_samples = s, max_features = f, n_jobs = -1)
+        resultnsf = outlier_classifier(IF,df)
+        scores[c,n,s,f] = regressor(resultnsf)    
+    smallest_rmse = 100
+    for key,value in scores.items():
+        if value < smallest_rmse:
+            smallest_rmse = value
+            small_key = key
+    return(small_key)
+
+#Lists of sample hyperparameters (Could use range but would take forever and lower ability to determine best one with count method)
+contaminations = [0.05]
+n_estimators = [500]
+max_samples = [.5]
+max_features = [.5]
+
+#Running the test 100 times and appending results to a list
+results = []
+for int in range(100):
+    hyper_parameter_key = hyper_parameter_tester(contaminations,n_estimators,max_samples,max_features)
+    results.append(hyper_parameter_key)
+
+#Finding the count of the specified hyperparameters that showed up the most
+dictionary = {}
+for ans in results:
+  dictionary[ans] = dictionary.get(ans, 0) + 1
+highest_count = 0
+for key,value in dictionary.items():
+        if value > highest_count:
+            high_count = value
+            best_hyperparamters = key
+
+
+
+
+
+Figure 10:
+#Code to see which have the highest count
+for key,value in dictionary.items():
+        if value == 4:
+            highest_count = value
+            best_hyperparameters = key
+            print(best_hyperparameters,highest_count)
+#Out of the 4, which one has the lowest RMSE?
+x = outlier_classifier(IForest(contamination = 0.05, n_estimators = 500, max_samples = 0.5, max_features = 0.5),df)
+y = regresser(x)
+print(y)
+
+
+
+
+
+Figure 11:
+#Checking confidence of outliers predicted by IForest
+IF = IForest(contamination = 0.05, n_estimators = 500, max_samples = 0.5, max_features = 0.5)
+labels = IF.fit_predict(df)
+outliers = df[IF.labels_ == 1]
+print(labels)
+outlier_probs = IF.predict_proba(outliers)
+for prob in outlier_probs:
+    print(prob)
+
+
+
+
+
+Figure 12:
+#Drop the rows with the outliers
+outlier_rows = []
+counter = 0
+while counter != len(labels):
+    if labels[counter] == 1:
+        outlier_rows.append(counter)
+    counter += 1
+df = df.drop(outlier_rows)
+
+
+
+
+
+Figure 13:
+#PCA and confirming whether Churn, MonthlyCharge, Bandwidth_GB_Year, and Tenure have a strong relationship
+df_num = df.drop(['Phone','Port_modem','Tablet','Multiple','OnlineSecurity','OnlineBackup','DeviceProtection','TechSupport','StreamingTV','StreamingMovies','PaperlessBilling','Gender','InternetService','Contract','Employment','Education','Unnamed: 0'],axis = 1)
+df_normal = (df_num - df_num.mean())/df_num.std()
+pca = PCA(n_components = 18)
+pca.fit(df_normal)
+df_pca = pd.DataFrame(pca.transform(df_normal), columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16','PC17','PC18'])
+plt.plot(pca.explained_variance_ratio_)
+plt.xlabel('number of comps')
+plt.ylabel('explained variance')
+loadings = pd.DataFrame(pca.components_.T, columns = ['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8','PC9','PC10','PC11','PC12','PC13','PC14','PC15','PC16','PC17','PC18'], index = df_num.columns)
+
+
+
+
+
+Figure 15:
+#Using EigenValues to determine which relationships are important
+matrix = np.dot(df_normal.T,df_normal)/df.shape[0]
+eigenvalues = [np.dot(eigenvector.T,np.dot(matrix,eigenvector)) for eigenvector in pca.components_]
+plt.plot(eigenvalues)
+plt.xlabel('number of comps')
+plt.ylabel('Eigenvalue')
+
+
