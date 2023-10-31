@@ -16,4 +16,4 @@ High Churn rate risks per timezone:
 ([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/Timezone_Churn.png])
 
 I concluded that the customers in the midwest have the highest chance of churn. Future business analytics,
-perhaps on the survey data, could be easily done to inform a recommendation that could start reducing churn rates.
+perhaps on the survey data, could be easily done to inform a recommendation for reducing churn rates.
