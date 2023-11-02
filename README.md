@@ -6,7 +6,7 @@ To do so, I used: Isolation forest algorithm, python methods, boolean masks, and
 
 ([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/Cleaning_Data_In_Python.txt])
 
-After I cleaned the data, I filtered for non=zero churn risks and used matplotlib to create a bar graph of the ten highest
+After I cleaned the data, I filtered for churn risks above the elbow (0.1) and used matplotlib to create a bar graph of the ten highest
 churn rates in each locational variables (state, county, city, etc.) The main findings are in the graphs below.
 
 High Churn rate risks per state:  
