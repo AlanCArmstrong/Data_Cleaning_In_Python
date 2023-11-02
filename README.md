@@ -10,7 +10,7 @@ After I cleaned the data, I filtered for churn risks above the elbow (0.1) and u
 churn rates in each locational variables (state, county, city, etc.) The main findings are in the graphs below.
 
 High Churn rate risks per state:  
-([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/State_Churn.png])
+([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_State.png])
 
 High Churn rate risks per timezone:  
 ([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_Timezone.jpg)])
