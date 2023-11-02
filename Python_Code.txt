@@ -360,20 +360,14 @@ df_KNN = df_KNN.assign(**new_cols)
 df_KNN.info()
 
 
+
 #Filtering for only customers who have not churned
-not_yet_churned = df_KNN[df_KNN['Churn'] == 0]
-plt.hist(not_yet_churned['churn_probs'])
+high_churn_risks = df_KNN[df_KNN['Churn'] == 0]
+plt.hist(high_churn_risks['churn_probs'])
 
 
 
-#Filtering for churn_risks above 0.1 (elbow in the data)
-high_churn_risks = not_yet_churned.copy(deep = True)
-high_churn_risks = high_churn_risks[high_churn_risks['churn_probs'] > 0.1]
-high_churn_risks.info()
-
-
-
-#Creating histplots with locational variables against average churn per category
+#Creating histplots with locational variables against average churn per category to find current customers who are the most likely to churn in the future
 plt.ylabel('Average Churn')
 plt.title('Average Churn per Timezone')
 high_churn_risks.groupby('Timezone')['churn_probs'].median().nlargest(10).plot.bar()
