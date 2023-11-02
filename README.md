@@ -6,7 +6,7 @@ To do so, I used: Isolation forest algorithm, python methods, boolean masks, and
 
 ([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/Cleaning_Data_In_Python.txt])
 
-After I cleaned the data, I filtered for high churn risks and used matplotlib to create a bar graph of the ten highest
+After I cleaned the data, I filtered for non=zero churn risks and used matplotlib to create a bar graph of the ten highest
 churn rates in each locational variables (state, county, city, etc.) The main findings are in the graphs below.
 
 High Churn rate risks per state:  
@@ -15,5 +15,10 @@ High Churn rate risks per state:
 High Churn rate risks per timezone:  
 ([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/Timezone_Churn.png])
 
-I concluded that the customers in the midwest have the highest chance of churn. Future business analytics,
+Unfortunately, the data revealed a somewhat obvious conclusion that the areas with the highest populations
+have the highest expected churn. I also checked the average rates of churn but the highest churn rates mostly had an insignificant amount
+of customers. However, this effort was not fruitless. This code can be repurposed as a predicter of amount of churn to inform expected
+customer totals. Also, 
+
+Future business analytics,
 perhaps on the survey data, could be easily done to inform a recommendation that, if acted upon, will reduce churn rates.
