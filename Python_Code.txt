@@ -368,7 +368,7 @@ plt.hist(not_yet_churned['churn_probs'])
 
 
 
-#Filtering for churn_risks above 0.1
+#Filtering for churn_risks above 0.1 (elbow in the data)
 high_churn_risks = not_yet_churned.copy(deep = True)
 high_churn_risks = high_churn_risks[high_churn_risks['churn_probs'] > 0.1]
 high_churn_risks.info()
@@ -376,15 +376,14 @@ high_churn_risks.info()
 
 
 #Creating histplots with locational variables against average churn per category
-high_churn_risks.groupby('Timezone')['churn_probs'].max().nlargest(10).plot.bar()
-plt.savefig('Timezone_Churn.png')
+plt.ylabel('Average Churn')
+plt.title('Average Churn per Timezone')
+high_churn_risks.groupby('Timezone')['churn_probs'].median().nlargest(10).plot.bar()
+plt.savefig('Average_Churn_per_Timezone.jpg', bbox_inches = 'tight')
 plt.show()
 
-high_churn_risks.groupby('State')['churn_probs'].max().nlargest(10).plot.bar()
-plt.savefig('State_Churn.png')
+high_churn_risks.groupby('State')['churn_probs'].median().nlargest(10).plot.bar()
+plt.ylabel('Average Churn')
+plt.title('Average Churn per State')
+plt.savefig('Average_Churn_per_State.png', bbox_inches = 'tight')
 plt.show()
-
-...
-
-#The data shows that the customers in the midwest have the highest chance of churn and business analytics,
-perhaps on the survey data, could be easily done to inform a recommendation
