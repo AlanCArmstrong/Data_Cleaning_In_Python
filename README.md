@@ -15,7 +15,6 @@ High Churn rate risks per state:
 High Churn rate risks per timezone:  
 ([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_Timezone.jpg)])
 
-The bar charts revealed no particular bias towards any region, except a very high average churn rate in alaska, nevada, florida and indiana regions. However, this code's function
-as a predicter of churn can be used to further analyze factors other than location. This prediction aspect can also be used in investigating qualities in customers
-who had a low predicted chance to churn but did and vice versa. Finally, as time goes on, with frequent updating, this model can be transformed into a time series model and provide
-serious insights. 
+The bar charts revealed no particular bias towards any region, except a very high average churn rate in alaska and indiana regions, as well as a few states. However, this code's function
+as a predicter of churn can be used to further analyze factors other than location. This analysis can also be used find what low churn states are doing right. 
+Finally, as time goes on, with frequent updating, this model can be transformed into a time series model and provide more helpful insights. 
