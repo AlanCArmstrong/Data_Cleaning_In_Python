@@ -9,10 +9,12 @@ To do so, I used: Isolation forest algorithm, python methods, boolean masks, and
 After I cleaned the data, I filtered for customers who had not yet churned and used matplotlib to create a bar graph of the fifteen highest
 churn rates in each locational variables (state, county, city, etc.) The most relevant findings are in the graphs below.
 
-High Churn rate risks per state:  
+High Churn rate risks per state:
+
 ([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_State.png])
 
-High Churn rate risks per timezone:  
+High Churn rate risks per timezone:
+
 ([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_Timezone.jpg)])
 
 The bar charts revealed no particular bias towards any region, except a very high average churn rate in alaska and indiana regions, as well as a few states. However, this code's function
