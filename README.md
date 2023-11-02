@@ -13,7 +13,7 @@ High Churn rate risks per state:
 ([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/State_Churn.png])
 
 High Churn rate risks per timezone:  
-([https://github.com/AlanCArmstrong/Data_Cleaning_and_Plotting_Locations/blob/main/Timezone_Churn.png])
+([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_Timezone.jpg)])
 
 Unfortunately, the data revealed a somewhat obvious conclusion that the areas with the highest populations
 have the highest expected churn. I also checked the average rates of churn but the highest churn rates mostly had an insignificant amount
