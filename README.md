@@ -15,5 +15,7 @@ High Churn rate risks per state:
 High Churn rate risks per timezone:  
 ([https://github.com/AlanCArmstrong/ML_Cleaning_and_Visualizing/blob/main/Average_Churn_per_Timezone.jpg)])
 
-The bar charts revealed no particular bias towards any region.
-Future business analytics, perhaps on the survey data, could be easily done to inform a recommendation that, if acted upon, will reduce churn rates.
+The bar charts revealed no particular bias towards any region, with seemingly random states having the highest churn rates. However, this code's function
+as a predicter of churn can be used to further analyze factors other than location. This prediction aspect can also be used in investigating qualities in customers
+who had a low predicted chance to churn but did and vice versa. Finally, as time goes on, with frequent updating, this model can be transformed into a time series model and provide
+serious insights. 
